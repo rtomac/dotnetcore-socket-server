@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net.Sockets;
 using System.Text;
 
 namespace Server
@@ -11,6 +12,10 @@ namespace Server
         public static int ChunkSize => ValueSize + NewLineSize;
 
         private readonly ISocketConnectionProxy _socketConnectionHandler;
+
+        public SocketStreamReader(Socket socket) : this(new SocketConnectionProxy(socket))
+        {
+        }
         public SocketStreamReader(ISocketConnectionProxy socketConnectionHandler)
         {
             _socketConnectionHandler = socketConnectionHandler;
