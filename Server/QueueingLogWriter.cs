@@ -5,12 +5,12 @@ using System.Threading;
 
 namespace Server
 {
-    public class QueueingLogWriter
+    public class QueueingLogWriter : IDisposable
     {
         private readonly TextWriter _writer;
         private readonly Queue<int> _queue;
         private readonly HashSet<int> _deduper;
-        private readonly object _syncRoot;
+        private readonly object _lock;
         private readonly ManualResetEventSlim _stopSignal;
         private readonly ManualResetEventSlim _itemsInQueue;
 
@@ -19,14 +19,14 @@ namespace Server
             _writer = writer;
             _queue = new Queue<int>();
             _deduper = new HashSet<int>();
-            _syncRoot = new object();
+            _lock = new object();
             _stopSignal = new ManualResetEventSlim();
             _itemsInQueue = new ManualResetEventSlim();
         }
 
         public bool WriteUnique(int value)
         {
-            lock (_syncRoot)
+            lock (_lock)
             {
                 if (!_deduper.Add(value))
                 {
@@ -40,21 +40,16 @@ namespace Server
 
         public void Start()
         {
+            _stopSignal.Reset();
             var thread = new Thread(new ThreadStart(() =>
             {
-                string value;
                 while (!_stopSignal.IsSet)
                 {
                     _itemsInQueue.Wait();
 
-                    value = _queue.Dequeue().ToString();
-                    if (value.Length < 9)
-                    {
-                        value = String.Concat(new String('0', 9 - value.Length), value);
-                    }
-                    _writer.WriteLine(value);
+                    WriteToFile(_queue.Dequeue());
 
-                    lock (_syncRoot)
+                    lock (_lock)
                     {
                         if (_queue.Count == 0)
                         {
@@ -69,6 +64,21 @@ namespace Server
         public void Stop()
         {
             _stopSignal.Set();
+        }
+
+        public void Dispose()
+        {
+            Stop();
+        }
+
+        private void WriteToFile(int value)
+        {
+            var str = value.ToString();
+            if (str.Length < 9)
+            {
+                str = String.Concat(new String('0', 9 - str.Length), str);
+            }
+            _writer.WriteLine(str);
         }
     }
 }

@@ -11,14 +11,14 @@ namespace Server
         public static int NewLineSize => NewLineSequence.Length;
         public static int ChunkSize => ValueSize + NewLineSize;
 
-        private readonly ISocketConnectionProxy _socketConnectionHandler;
+        private readonly ISocketConnectionProxy _socketConnection;
 
         public SocketStreamReader(Socket socket) : this(new SocketConnectionProxy(socket))
         {
         }
-        public SocketStreamReader(ISocketConnectionProxy socketConnectionHandler)
+        public SocketStreamReader(ISocketConnectionProxy socketConnection)
         {
-            _socketConnectionHandler = socketConnectionHandler;
+            _socketConnection = socketConnection;
         }
 
         public void Read(Action<int> valueReadCallback)
@@ -41,7 +41,7 @@ namespace Server
             int bufferOffset = 0;
             while (bufferOffset < buffer.Length)
             {
-                bytesRead = _socketConnectionHandler.Receive(buffer, bufferOffset, buffer.Length - bufferOffset);
+                bytesRead = _socketConnection.Receive(buffer, bufferOffset, buffer.Length - bufferOffset);
                 if (bytesRead == 0)
                 {
                     break;

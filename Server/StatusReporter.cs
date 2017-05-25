@@ -1,10 +1,11 @@
 ﻿using log4net;
+using System;
 using System.IO;
 using System.Threading;
 
 namespace Server
 {
-    public class StatusReporter
+    public class StatusReporter : IDisposable
     {
         public int TotalUnique { get; private set; }
         public int TotalDuplicates { get; private set; }
@@ -12,6 +13,7 @@ namespace Server
         public int IncrementalDuplicates { get; private set; }
 
         private static ILog _log = LogManager.GetLogger(typeof(StatusReporter));
+
         private readonly ReaderWriterLockSlim _lock;
         private readonly ManualResetEventSlim _stopSignal;
 
@@ -81,6 +83,7 @@ namespace Server
 
         public void Start(int reportingInterval)
         {
+            _stopSignal.Reset();
             var thread = new Thread(new ThreadStart(() =>
             {
                 while (!_stopSignal.IsSet)
@@ -99,6 +102,11 @@ namespace Server
         public void Stop()
         {
             _stopSignal.Set();
+        }
+
+        public void Dispose()
+        {
+            Stop();
         }
     }
 }
