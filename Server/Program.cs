@@ -12,6 +12,7 @@ namespace Server
     class Program
     {
         private static StatusReporter _reporter;
+        private static Deduplicator _deduper;
         private static LocalhostSocketListener _listener;
 
         static void Main(string[] args)
@@ -20,6 +21,8 @@ namespace Server
 
             Console.WriteLine("Note: Press 'q' to stop server.");
 
+            _deduper = new Deduplicator();
+
             _reporter = new StatusReporter();
             _reporter.Start(10);
 
@@ -27,13 +30,25 @@ namespace Server
             _listener.Start(socket =>
             {
                 var reader = new SocketStreamReader(socket);
-                reader.Read(value => _reporter.RecordUnique());
+                reader.Read(ProcessValue);
             });
 
             Console.CancelKeyPress += delegate { StopServer(); };
 
             while (Console.ReadKey(true).Key != ConsoleKey.Q) { }
             StopServer();
+        }
+
+        private static void ProcessValue(int value)
+        {
+            if (_deduper.IsUnique(value))
+            {
+                _reporter.RecordUnique();
+            }
+            else
+            {
+                _reporter.RecordDuplicate();
+            }
         }
 
         private static void ConfigureLogging(Level level)
@@ -50,8 +65,14 @@ namespace Server
         private static void StopServer()
         {
             Console.WriteLine("Stopping server...");
-            _listener.Stop();
-            _reporter.Stop();
+            try
+            {
+                _listener.Stop();
+                _reporter.Stop();
+            }
+            catch
+            {
+            }
         }
     }
 }

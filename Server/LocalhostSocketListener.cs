@@ -140,6 +140,10 @@ namespace Server
             {
                 _log.Debug($"Socket could not be shutdown: {ex.Message}");
             }
+            catch (ObjectDisposedException)
+            {
+                return;
+            }
             socket.Dispose();
         }
     }
