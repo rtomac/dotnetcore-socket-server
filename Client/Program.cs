@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.Extensions.CommandLineUtils;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Security.Cryptography;
@@ -8,35 +9,65 @@ namespace Client
 {
     class Program
     {
+        private static Socket _socket;
+        private static bool _stopSignal;
+
         static void Main(string[] args)
         {
-            var stopSignal = false;
-            var rng = RandomNumberGenerator.Create();
-            int max = args.Length > 0 ? int.Parse(args[0]) : 1000000;
-            int count = 0;
+            var numberToSend = 1000000;
 
-            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            var cmd = new CommandLineApplication(throwOnUnexpectedArg: false);
+            var numberOption = cmd.Option("-n|--number <number>", "The number of values to send to the server. Default is 1M.", CommandOptionType.SingleValue);
+            cmd.HelpOption("-?|-h|--help");
+            cmd.OnExecute(() =>
+            {
+                if (numberOption.HasValue() && int.TryParse(numberOption.Value(), out int numberValue))
+                {
+                    numberToSend = numberValue;
+                }
+                return 0;
+            });
+            cmd.Execute(args);
 
-            Console.WriteLine("Connecting to port 4000...");
-            socket.Connect(new IPEndPoint(IPAddress.Loopback, 4000));
-            Console.WriteLine("Connected.");
+            ConnectToServer(4000);
 
             Console.CancelKeyPress += delegate
             {
-                stopSignal = true;
-                socket.Shutdown(SocketShutdown.Both);
-                socket.Dispose();
+                _stopSignal = true;
+                DisconnectFromServer();
             };
 
+            SendData(numberToSend);
+            DisconnectFromServer();
+        }
+
+        private static void ConnectToServer(int port)
+        {
+            Console.WriteLine($"Connecting to port {port}...");
+            _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            _socket.Connect(new IPEndPoint(IPAddress.Loopback, port));
+            Console.WriteLine("Connected.");
+        }
+
+        private static void DisconnectFromServer()
+        {
+            _socket.Shutdown(SocketShutdown.Both);
+            _socket.Dispose();
+        }
+
+        private static void SendData(int numberToSend)
+        {
+            var rng = RandomNumberGenerator.Create();
+            int count = 0;
             var bytes = new byte[4];
             uint value = 0;
-            while (!stopSignal && count++ < max)
+            while (!_stopSignal && count++ < numberToSend)
             {
                 rng.GetBytes(bytes);
                 value = BitConverter.ToUInt32(bytes, 0);
                 try
                 {
-                    socket.Send(Encoding.ASCII.GetBytes(ToPaddedString(value) + Environment.NewLine));
+                    _socket.Send(Encoding.ASCII.GetBytes(ToPaddedString(value) + Environment.NewLine));
                 }
                 catch (SocketException ex)
                 {
