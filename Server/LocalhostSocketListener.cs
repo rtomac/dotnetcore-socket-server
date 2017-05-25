@@ -13,7 +13,8 @@ namespace Server
         private readonly int _maxConnections;
         private Socket _socket;
         private List<Socket> _connections;
-        private object _connectionsSyncRoot;
+        private object _connectionsLock;
+
         private static ILog _log = LogManager.GetLogger(typeof(LocalhostSocketListener));
 
         public LocalhostSocketListener(int port, int maxConnections)
@@ -21,7 +22,7 @@ namespace Server
             _port = port;
             _maxConnections = maxConnections;
             _connections = new List<Socket>();
-            _connectionsSyncRoot = new object();
+            _connectionsLock = new object();
         }
 
         public void Start(Action<Socket> newSocketConnectionCallback)
@@ -35,7 +36,7 @@ namespace Server
 
         public void Stop()
         {
-            lock (_connectionsSyncRoot)
+            lock (_connectionsLock)
             {
                 _connections.ForEach(ShutdownSocket);
             }
@@ -76,7 +77,7 @@ namespace Server
                 if (ShouldRefuseConnection())
                 {
                     ShutdownSocket(connection);
-                    _log.Info("Socket connection refused and aborted.");
+                    _log.Info("Socket connection refused.");
                     continue;
                 }
 
@@ -92,14 +93,14 @@ namespace Server
             {
                 ExecuteCallback(connection, newSocketConnectionCallback);
 
-                lock (_connectionsSyncRoot)
+                lock (_connectionsLock)
                 {
                     _connections.Remove(connection);
                 }
             }));
             thread.Start();
 
-            lock (_connectionsSyncRoot)
+            lock (_connectionsLock)
             {
                 _connections.Add(connection);
             }
@@ -124,7 +125,7 @@ namespace Server
 
         private bool ShouldRefuseConnection()
         {
-            lock (_connectionsSyncRoot)
+            lock (_connectionsLock)
             {
                 return _connections.Count >= _maxConnections;
             }
@@ -140,11 +141,6 @@ namespace Server
             {
                 _log.Debug($"Socket could not be shutdown: {ex.Message}");
             }
-            catch (ObjectDisposedException)
-            {
-                return;
-            }
-            socket.Dispose();
         }
     }
 }
