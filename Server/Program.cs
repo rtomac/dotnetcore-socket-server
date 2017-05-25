@@ -5,14 +5,17 @@ using log4net.Core;
 using log4net.Layout;
 using log4net.Repository.Hierarchy;
 using System;
+using System.IO;
 using System.Reflection;
+using System.Text;
 
 namespace Server
 {
     class Program
     {
         private static StatusReporter _reporter;
-        private static Deduplicator _deduper;
+        private static FileStream _file;
+        private static QueueingLogWriter _logWriter;
         private static LocalhostSocketListener _listener;
 
         static void Main(string[] args)
@@ -21,7 +24,10 @@ namespace Server
 
             Console.WriteLine("Note: Press 'q' to stop server.");
 
-            _deduper = new Deduplicator();
+            var logPath = Path.Combine(Directory.GetCurrentDirectory(), "numbers.log");
+            _file = new FileStream(logPath, FileMode.Create);
+            _logWriter = new QueueingLogWriter(new StreamWriter(_file, Encoding.ASCII));
+            _logWriter.Start();
 
             _reporter = new StatusReporter();
             _reporter.Start(10);
@@ -41,7 +47,7 @@ namespace Server
 
         private static void ProcessValue(int value)
         {
-            if (_deduper.IsUnique(value))
+            if (_logWriter.WriteUnique(value))
             {
                 _reporter.RecordUnique();
             }
@@ -67,6 +73,8 @@ namespace Server
             Console.WriteLine("Stopping server...");
             try
             {
+                _logWriter.Stop();
+                _file.Dispose();
                 _listener.Stop();
                 _reporter.Stop();
             }
