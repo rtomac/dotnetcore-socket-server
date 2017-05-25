@@ -10,7 +10,7 @@ Building
 
 On Windows:
 ```
-choco install dotnetcore-sdk
+choco install -y dotnetcore-sdk
 ```
 
 #### Clone repo

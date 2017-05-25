@@ -45,7 +45,7 @@ namespace Server
             var portOption = cmd.Option("-p|--port <port>", $"The port on which the server should run. Default: {port}", CommandOptionType.SingleValue);
             var maxConnectionsOption = cmd.Option("-m|--max <max>", $"The maximum number of socket connections the server should allow. Default: {maxConnections}", CommandOptionType.SingleValue);
             var statusIntervalOption = cmd.Option("-s|--status <interval>", $"The number of seconds between each status report. Default: {statusInterval}", CommandOptionType.SingleValue);
-            var logFileOption = cmd.Option("-l|--log <filePath>", $"The path to which value should be logged. Default: {logFile} in the working dir.", CommandOptionType.SingleValue);
+            var logFileOption = cmd.Option("-l|--log <filePath>", $"The path to which value should be logged. Default: {logFile} in the working dir", CommandOptionType.SingleValue);
             cmd.HelpOption("-?|-h|--help");
             cmd.OnExecute(() =>
             {
