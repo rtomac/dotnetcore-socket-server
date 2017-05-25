@@ -34,7 +34,7 @@ There are two command-line applications here:
 
 #### Server
 
-Fire it up, and it will start listening for connections (by default) on port 4000.
+Fire it up, and it will start listening for connections on port 4000.
 
 ```
 run-server.bat
@@ -51,7 +51,7 @@ dotnet run -- -?
 
 #### Client
 
-When started, and it will connect to the server (by default) on port 4000 and start blasting data at it.
+When started, it will connect to the server on port 4000 and start blasting data at it.
 
 ```
 run-client.bat
@@ -73,7 +73,7 @@ Here is a brief overview of the code/class design (in the server app):
 - `Application`: Class that orchestrates and controls the lifetime of the different components in the application, including the socket listener, the log file writer, and the status reporter.
 - `LocalhostSocketListener`: Binds to localhost:4000 (or specified port), listens for incoming connections on a background thread, and dispatches new threads to handle each of them.
 - `SocketStreamReader`: Reads data from a network stream over a socket connection, parses and processes it, and hands the good stuff off to other components for further processing (i.e. writing to log file).
-- `QueueingLogWriter`: Writes (de-duped) values transmitted to the server into a log file. Does this by managing an in-memory queue of values to be written, and processing that queue on a background worker thread, to isolate the file I/O and prevent it from blocking the other threads that are processing data from their network connections.
-- `StatusReporter`: Keeps track of aggregate statistics and (on a background thread) periodically writes a status report to stdout.
+- `QueueingLogWriter`: Writes de-duped values transmitted to the server into a log file. Does this by managing an in-memory queue of values to be written, and processing that queue on a background worker thread, to isolate the file I/O and prevent it from blocking the other threads that are processing data from their network connections.
+- `StatusReporter`: Keeps track of aggregate statistics and periodically (on a background thread) writes a status report to stdout.
 
 The source code has a bit more documentation on how all of these classes are doing their job. Check it out.
