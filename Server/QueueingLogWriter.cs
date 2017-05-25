@@ -12,7 +12,7 @@ namespace Server
         private readonly HashSet<int> _deduper;
         private readonly object _lock;
         private readonly ManualResetEventSlim _stopSignal;
-        private readonly ManualResetEventSlim _itemsInQueue;
+        private readonly ManualResetEventSlim _workerSignal;
 
         public QueueingLogWriter(TextWriter writer)
         {
@@ -21,7 +21,7 @@ namespace Server
             _deduper = new HashSet<int>();
             _lock = new object();
             _stopSignal = new ManualResetEventSlim();
-            _itemsInQueue = new ManualResetEventSlim();
+            _workerSignal = new ManualResetEventSlim();
 
             StartWatchingQueue();
         }
@@ -35,7 +35,7 @@ namespace Server
                     return false;
                 }
                 _queue.Enqueue(value);
-                _itemsInQueue.Set();
+                _workerSignal.Set();
                 return true;
             }
         }
@@ -50,19 +50,32 @@ namespace Server
             _stopSignal.Reset();
             var thread = new Thread(new ThreadStart(() =>
             {
+                int value;
+                bool flush;
+                var total = 0;
                 while (!_stopSignal.IsSet)
                 {
-                    _itemsInQueue.Wait();
-
-                    _writer.WriteLine(_queue.Dequeue());
+                    _workerSignal.Wait();
+                    if (_stopSignal.IsSet) break;
 
                     lock (_lock)
                     {
+                        total++;
+                        value = _queue.Dequeue();
+                        flush = (total % 100000) == 0;
+
                         if (_queue.Count == 0)
                         {
-                            _itemsInQueue.Reset();
-                            _writer.Flush();
+                            _workerSignal.Reset();
+                            flush = true;
                         }
+                    }
+
+                    _writer.WriteLine(value);
+
+                    if (flush)
+                    {
+                        _writer.Flush();
                     }
                 }
             }));
@@ -72,6 +85,7 @@ namespace Server
         private void StopWatchingQueue()
         {
             _writer.Flush();
+            _workerSignal.Set();
             _stopSignal.Set();
         }
     }
