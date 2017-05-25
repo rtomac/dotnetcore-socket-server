@@ -11,23 +11,29 @@ namespace Server
 {
     class Program
     {
+        private static StatusReporter _reporter;
+        private static LocalhostSocketListener _listener;
+
         static void Main(string[] args)
         {
             ConfigureLogging(Level.Info);
 
             Console.WriteLine("Note: Press 'q' to stop server.");
 
-            var listener = new LocalhostSocketListener(4000, 5);
-            listener.Start(socket =>
+            _reporter = new StatusReporter();
+            _reporter.Start(10);
+
+            _listener = new LocalhostSocketListener(4000, 5);
+            _listener.Start(socket =>
             {
                 var reader = new SocketStreamReader(socket);
-                reader.Read(num => Console.WriteLine($"received {num}"));
+                reader.Read(value => _reporter.RecordUnique());
             });
 
-            Console.CancelKeyPress += delegate { StopServer(listener); };
+            Console.CancelKeyPress += delegate { StopServer(); };
 
             while (Console.ReadKey(true).Key != ConsoleKey.Q) { }
-            StopServer(listener);
+            StopServer();
         }
 
         private static void ConfigureLogging(Level level)
@@ -41,10 +47,11 @@ namespace Server
             BasicConfigurator.Configure(repository, appender);
         }
 
-        private static void StopServer(LocalhostSocketListener listener)
+        private static void StopServer()
         {
             Console.WriteLine("Stopping server...");
-            listener.Stop();
+            _listener.Stop();
+            _reporter.Stop();
         }
     }
 }
