@@ -45,16 +45,6 @@ namespace Server
             StopWatchingQueue();
         }
 
-        private void WriteToFile(int value)
-        {
-            var str = value.ToString();
-            if (str.Length < 9)
-            {
-                str = String.Concat(new String('0', 9 - str.Length), str);
-            }
-            _writer.WriteLine(str);
-        }
-
         private void StartWatchingQueue()
         {
             _stopSignal.Reset();
@@ -64,13 +54,14 @@ namespace Server
                 {
                     _itemsInQueue.Wait();
 
-                    WriteToFile(_queue.Dequeue());
+                    _writer.WriteLine(_queue.Dequeue());
 
                     lock (_lock)
                     {
                         if (_queue.Count == 0)
                         {
                             _itemsInQueue.Reset();
+                            _writer.Flush();
                         }
                     }
                 }
@@ -80,6 +71,7 @@ namespace Server
 
         private void StopWatchingQueue()
         {
+            _writer.Flush();
             _stopSignal.Set();
         }
     }
