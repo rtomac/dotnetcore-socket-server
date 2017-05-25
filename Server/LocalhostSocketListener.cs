@@ -1,7 +1,9 @@
 ﻿using log4net;
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace Server
 {
@@ -9,28 +11,136 @@ namespace Server
     {
         private readonly int _port;
         private readonly int _maxConnections;
+        private Socket _socket;
+        private List<Socket> _connections;
+        private object _connectionsSyncRoot;
         private static ILog _log = LogManager.GetLogger(typeof(LocalhostSocketListener));
 
         public LocalhostSocketListener(int port, int maxConnections)
         {
             _port = port;
             _maxConnections = maxConnections;
+            _connections = new List<Socket>();
+            _connectionsSyncRoot = new object();
         }
 
-        public void Listen(Action<Socket> newSocketConnectionCallback)
+        public void Start(Action<Socket> newSocketConnectionCallback)
         {
-            var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            socket.Bind(new IPEndPoint(IPAddress.Loopback, _port));
-            socket.Listen(_maxConnections);
-
-            while (true)
+            var thread = new Thread(new ThreadStart(() =>
             {
-                _log.Info($"Waiting for a socket connection on port {_port}...");
-                var socketConnection = socket.Accept();
+                BindAndListen(newSocketConnectionCallback);
+            }));
+            thread.Start();
+        }
 
-                _log.Info($"Socket connection created on port {_port}.");
-                newSocketConnectionCallback(socketConnection);
+        public void Stop()
+        {
+            lock (_connectionsSyncRoot)
+            {
+                _connections.ForEach(ShutdownSocket);
             }
+
+            if (_socket != null)
+            {
+                _socket.Dispose();
+                _socket = null;
+            }
+        }
+
+        private void BindAndListen(Action<Socket> newSocketConnectionCallback)
+        {
+            _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            _socket.Bind(new IPEndPoint(IPAddress.Loopback, _port));
+            _socket.Listen(_maxConnections);
+
+            _log.Info($"Listening for socket connections on port {_port}...");
+
+            BlockAndAcceptConnections(newSocketConnectionCallback);
+        }
+
+        private void BlockAndAcceptConnections(Action<Socket> newSocketConnectionCallback)
+        {
+            while (_socket != null)
+            {
+                Socket connection;
+                try
+                {
+                    connection = _socket.Accept();
+                }
+                catch (SocketException ex)
+                {
+                    _log.Debug($"Socket accept failed: {ex.Message}");
+                    continue;
+                }
+
+                if (ShouldRefuseConnection())
+                {
+                    ShutdownSocket(connection);
+                    _log.Info("Socket connection refused and aborted.");
+                    continue;
+                }
+
+                _log.Info("Socket connection accepted.");
+
+                DispatchThreadForNewConnection(connection, newSocketConnectionCallback);
+            }
+        }
+
+        private void DispatchThreadForNewConnection(Socket connection, Action<Socket> newSocketConnectionCallback)
+        {
+            var thread = new Thread(new ThreadStart(() =>
+            {
+                ExecuteCallback(connection, newSocketConnectionCallback);
+
+                lock (_connectionsSyncRoot)
+                {
+                    _connections.Remove(connection);
+                }
+            }));
+            thread.Start();
+
+            lock (_connectionsSyncRoot)
+            {
+                _connections.Add(connection);
+            }
+        }
+
+        private static void ExecuteCallback(Socket connection, Action<Socket> newSocketConnectionCallback)
+        {
+            try
+            {
+                newSocketConnectionCallback(connection);
+            }
+            catch (SocketException ex)
+            {
+                _log.Debug($"Socket connection closed forcibly: {ex.Message}");
+            }
+            finally
+            {
+                ShutdownSocket(connection);
+                _log.Info("Socket connection closed.");
+            }
+        }
+
+        private bool ShouldRefuseConnection()
+        {
+            lock (_connectionsSyncRoot)
+            {
+                return _connections.Count >= _maxConnections;
+            }
+        }
+
+        private static void ShutdownSocket(Socket socket)
+        {
+            try
+            {
+                socket.Shutdown(SocketShutdown.Both);
+            }
+            catch (SocketException ex)
+            {
+                _log.Debug($"Socket could not be shutdown: {ex.Message}");
+            }
+            socket.Dispose();
         }
     }
 }
