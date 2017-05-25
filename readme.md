@@ -8,6 +8,7 @@ Building
 ========
 #### Get .NET Core SDK with .NET 1.1 runtime
 
+On Windows:
 ```
 choco install dotnetcore-sdk
 ```
