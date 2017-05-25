@@ -8,12 +8,14 @@ using Microsoft.Extensions.CommandLineUtils;
 using System;
 using System.IO;
 using System.Reflection;
+using System.Threading;
 
 namespace Server
 {
     class Program
     {
         private static Application _app;
+        private static ManualResetEventSlim _exitSignal = new ManualResetEventSlim();
 
         static void Main(string[] args)
         {
@@ -33,10 +35,9 @@ namespace Server
             var maxConnectionsOption = cmd.Option("-m|--max <max>", $"The maximum number of socket connections the server should allow. Default: {maxConnections}", CommandOptionType.SingleValue);
             var statusIntervalOption = cmd.Option("-s|--status <interval>", $"The number of seconds between each status report. Default: {statusInterval}", CommandOptionType.SingleValue);
             var logFileOption = cmd.Option("-l|--log <filePath>", $"The path to which value should be logged. Default: {logFile} in the working dir.", CommandOptionType.SingleValue);
-            var helpOption = cmd.HelpOption("-?|-h|--help");
+            cmd.HelpOption("-?|-h|--help");
             cmd.OnExecute(() =>
             {
-                if (helpOption.HasValue()) return 0;
                 if (portOption.HasValue()) port = int.Parse(portOption.Value());
                 if (maxConnectionsOption.HasValue()) maxConnections = int.Parse(maxConnectionsOption.Value());
                 if (statusIntervalOption.HasValue()) statusInterval = int.Parse(statusIntervalOption.Value());
@@ -62,7 +63,7 @@ namespace Server
 
         private static void Run(int port, int maxConnections, int statusInterval, string logFile)
         {
-            Console.WriteLine("Note: Press 'q' to stop server.");
+            Console.WriteLine("Note: Press <CTRL-C> to stop server.");
 
             _app = new Application(
                 port, maxConnections, statusInterval,
@@ -71,8 +72,7 @@ namespace Server
 
             Console.CancelKeyPress += delegate { StopServer(); };
 
-            while (Console.ReadKey(true).Key != ConsoleKey.Q) { }
-            StopServer();
+            _exitSignal.Wait();
         }
 
         private static void StopServer()
@@ -89,7 +89,7 @@ namespace Server
         {
             Console.WriteLine("Terminate command received.");
             StopServer();
-            Environment.Exit(0);
+            _exitSignal.Set();
         }
     }
 }
