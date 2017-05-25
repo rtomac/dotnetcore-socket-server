@@ -12,10 +12,10 @@ namespace Client
         private static Socket _socket;
         private static bool _stopSignal;
 
-        static void Main(string[] args)
+        static int Main(string[] args)
         {
             var port = 4000;
-            var numberToSend = 1000000;
+            var numberToSend = 10000000;
             var terminate = false;
 
             var cmd = new CommandLineApplication()
@@ -24,26 +24,26 @@ namespace Client
                 Name = "dotnet run --"
             };
             var portOption = cmd.Option("-p|--port <port>", $"The port on which the server is running. Default: {port}", CommandOptionType.SingleValue);
-            var numberOption = cmd.Option("-n|--number <number>", "The number of values to send to the server. Default: 1M", CommandOptionType.SingleValue);
+            var numberOption = cmd.Option("-n|--number <number>", "The number of values to send to the server. Default: 10M", CommandOptionType.SingleValue);
             var terminateOption = cmd.Option("-t|--terminate", "Send a terminate command after all values are sent to the server.", CommandOptionType.NoValue);
-            var helpOption = cmd.HelpOption("-?|-h|--help");
+            cmd.HelpOption("-?|-h|--help");
             cmd.OnExecute(() =>
             {
-                if (helpOption.HasValue()) return 0;
                 if (portOption.HasValue()) port = int.Parse(portOption.Value());
                 if (numberOption.HasValue()) numberToSend = int.Parse(numberOption.Value());
                 terminate = terminateOption.HasValue();
 
-                Run(port, numberToSend, terminate);
-
-                return 0;
+                return Run(port, numberToSend, terminate);
             });
-            cmd.Execute(args);
+            return cmd.Execute(args);
         }
 
-        private static void Run(int port, int numberToSend, bool terminate)
+        private static int Run(int port, int numberToSend, bool terminate)
         {
-            ConnectToServer(port);
+            if (!ConnectToServer(port))
+            {
+                return 1;
+            }
 
             Console.CancelKeyPress += delegate
             {
@@ -53,14 +53,27 @@ namespace Client
 
             SendData(numberToSend, terminate);
             DisconnectFromServer();
+
+            return 0;
         }
 
-        private static void ConnectToServer(int port)
+        private static bool ConnectToServer(int port)
         {
             Console.WriteLine($"Connecting to port {port}...");
+
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-            _socket.Connect(new IPEndPoint(IPAddress.Loopback, port));
+            try
+            {
+                _socket.Connect(new IPEndPoint(IPAddress.Loopback, port));
+            }
+            catch (SocketException)
+            {
+                Console.WriteLine("Failed to connect to server.");
+                return false;
+            }
+
             Console.WriteLine("Connected.");
+            return true;
         }
 
         private static void SendData(int numberToSend, bool terminate)
