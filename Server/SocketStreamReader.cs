@@ -54,6 +54,7 @@ namespace Server
         private bool TryConvertToInt32(byte[] buffer, out int value)
         {
             value = 0;
+
             for (var i = 0; i < NewLineSize; i++)
             {
                 if (buffer[ValueSize + i] != NewLineSequence[i])
@@ -62,8 +63,19 @@ namespace Server
                 }
             }
 
-            var str = Encoding.ASCII.GetString(buffer).Trim();
-            return int.TryParse(str, out value);
+            byte b;
+            int place;
+            for (var i = 0; i < ValueSize; i++)
+            {
+                b = buffer[i];
+                if (b < 48 || b > 57)
+                {
+                    return false;
+                }
+                place = (int)Math.Pow(10, ValueSize - i - 1);
+                value += ((b - 48) * place);
+            }
+            return true;
         }
     }
 }
