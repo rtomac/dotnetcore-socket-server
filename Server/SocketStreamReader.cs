@@ -10,8 +10,8 @@ namespace Server
         public static int NewLineSize => NewLineSequence.Length;
         public static int ChunkSize => ValueSize + NewLineSize;
 
-        private readonly ISocketConnectionHandler _socketConnectionHandler;
-        public SocketStreamReader(ISocketConnectionHandler socketConnectionHandler)
+        private readonly ISocketConnectionProxy _socketConnectionHandler;
+        public SocketStreamReader(ISocketConnectionProxy socketConnectionHandler)
         {
             _socketConnectionHandler = socketConnectionHandler;
         }

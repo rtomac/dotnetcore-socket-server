@@ -12,7 +12,7 @@ namespace ServerTests
         [Fact]
         public void TestReadSuccess()
         {
-            var socket = A.Fake<ISocketConnectionHandler>();
+            var socket = A.Fake<ISocketConnectionProxy>();
             var reader = new SocketStreamReader(socket);
             var values = new List<int>();
 
@@ -30,7 +30,7 @@ namespace ServerTests
         [Fact]
         public void TestReadSuccessWithLatentReceipt()
         {
-            var socket = A.Fake<ISocketConnectionHandler>();
+            var socket = A.Fake<ISocketConnectionProxy>();
             var reader = new SocketStreamReader(socket);
             var values = new List<int>();
 
@@ -48,7 +48,7 @@ namespace ServerTests
         [Fact]
         public void TestReadSuccessWithTerminateSequence()
         {
-            var socket = A.Fake<ISocketConnectionHandler>();
+            var socket = A.Fake<ISocketConnectionProxy>();
             var reader = new SocketStreamReader(socket);
             var values = new List<int>();
 
@@ -76,7 +76,7 @@ namespace ServerTests
         [InlineData("123456789  ")]
         public void TestReadInvalidInputFirstLine(string line)
         {
-            var socket = A.Fake<ISocketConnectionHandler>();
+            var socket = A.Fake<ISocketConnectionProxy>();
             var reader = new SocketStreamReader(socket);
             var values = new List<int>();
 
@@ -89,7 +89,7 @@ namespace ServerTests
         [Fact]
         public void TestReadInvalidSubsequentLine()
         {
-            var socket = A.Fake<ISocketConnectionHandler>();
+            var socket = A.Fake<ISocketConnectionProxy>();
             var reader = new SocketStreamReader(socket);
             var values = new List<int>();
 
@@ -111,7 +111,7 @@ namespace ServerTests
             return Encoding.ASCII.GetBytes(str + (newline ? Environment.NewLine : ""));
         }
 
-        private static void StubReceive(ISocketConnectionHandler socket, int offset, int size, byte[] bytes)
+        private static void StubReceive(ISocketConnectionProxy socket, int offset, int size, byte[] bytes)
         {
             A.CallTo(() => socket.Receive(A<byte[]>.Ignored, offset, size))
                 .Invokes((byte[] buffer, int offsetArg, int sizeArg) => { bytes.CopyTo(buffer, offset); })

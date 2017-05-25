@@ -20,7 +20,7 @@ namespace Server
             var listener = new LocalhostSocketListener(4000, 5);
             listener.Start(socket =>
             {
-                var reader = new SocketStreamReader(new SocketConnectionHandler(socket));
+                var reader = new SocketStreamReader(new SocketConnectionProxy(socket));
                 reader.Read(num => Console.WriteLine($"received {num}"));
             });
 

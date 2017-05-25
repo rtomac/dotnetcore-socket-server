@@ -1,6 +1,6 @@
 ﻿namespace Server
 {
-    public interface ISocketConnectionHandler
+    public interface ISocketConnectionProxy
     {
         int Receive(byte[] buffer, int offset, int size);
     }
