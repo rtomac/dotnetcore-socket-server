@@ -13,8 +13,6 @@ namespace Server
         private readonly QueueingLogWriter _logWriter;
         private readonly LocalhostSocketListener _listener;
 
-        private static ILog _log = LogManager.GetLogger(typeof(Application));
-
         public Application(int port, int maxConnections, int statusInterval, string logFilePath)
         {
             _statusInterval = statusInterval;
@@ -24,17 +22,16 @@ namespace Server
 
             _logFile = new FileStream(logFilePath, FileMode.Create);
             _logWriter = new QueueingLogWriter(new StreamWriter(_logFile, Encoding.ASCII));
-            
         }
 
-        public void Run()
+        public void Run(Action terminationCallback = null)
         {
             _reporter.Start(_statusInterval);
 
             _listener.Start(socket =>
             {
                 var reader = new SocketStreamReader(socket);
-                reader.Read(ProcessValue);
+                reader.Read(ProcessValue, terminationCallback);
             });
         }
 

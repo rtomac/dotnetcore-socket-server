@@ -23,7 +23,7 @@ namespace Server
             _app = new Application(
                 4000, 5, 10,
                 Path.Combine(Directory.GetCurrentDirectory(), "numbers.log"));
-            _app.Run();
+            _app.Run(TerminateCommandReceived);
 
             Console.CancelKeyPress += delegate { StopServer(); };
 
@@ -40,6 +40,13 @@ namespace Server
             };
             ((Hierarchy)repository).Root.Level = level;
             BasicConfigurator.Configure(repository, appender);
+        }
+
+        private static void TerminateCommandReceived()
+        {
+            Console.WriteLine("Terminate command received.");
+            StopServer();
+            Environment.Exit(0);
         }
 
         private static void StopServer()

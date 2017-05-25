@@ -15,9 +15,11 @@ namespace Client
         static void Main(string[] args)
         {
             var numberToSend = 1000000;
+            var terminate = false;
 
             var cmd = new CommandLineApplication(throwOnUnexpectedArg: false);
             var numberOption = cmd.Option("-n|--number <number>", "The number of values to send to the server. Default is 1M.", CommandOptionType.SingleValue);
+            var terminateOption = cmd.Option("-t|--terminate", "Send a terminate command after values are sent to the server.", CommandOptionType.NoValue);
             cmd.HelpOption("-?|-h|--help");
             cmd.OnExecute(() =>
             {
@@ -25,6 +27,7 @@ namespace Client
                 {
                     numberToSend = numberValue;
                 }
+                terminate = terminateOption.HasValue();
                 return 0;
             });
             cmd.Execute(args);
@@ -37,7 +40,7 @@ namespace Client
                 DisconnectFromServer();
             };
 
-            SendData(numberToSend);
+            SendData(numberToSend, terminate);
             DisconnectFromServer();
         }
 
@@ -55,12 +58,13 @@ namespace Client
             _socket.Dispose();
         }
 
-        private static void SendData(int numberToSend)
+        private static void SendData(int numberToSend, bool terminate)
         {
             var rng = RandomNumberGenerator.Create();
             int count = 0;
             var bytes = new byte[4];
             uint value = 0;
+
             while (!_stopSignal && count++ < numberToSend)
             {
                 rng.GetBytes(bytes);
@@ -79,6 +83,12 @@ namespace Client
                 {
                     Console.WriteLine($"{count} values sent.");
                 }
+            }
+
+            if (!_stopSignal && terminate)
+            {
+                _socket.Send(Encoding.ASCII.GetBytes("terminate" + Environment.NewLine));
+                Console.WriteLine($"Terminate command sent.");
             }
         }
 

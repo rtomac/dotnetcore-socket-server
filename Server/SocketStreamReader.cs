@@ -11,6 +11,8 @@ namespace Server
         public static int NewLineSize => NewLineSequence.Length;
         public static int ChunkSize => ValueSize + NewLineSize;
 
+        private static readonly string _terminateSequence = "terminate" + Environment.NewLine;
+
         private readonly ISocketConnectionProxy _socketConnection;
 
         public SocketStreamReader(Socket socket) : this(new SocketConnectionProxy(socket))
@@ -21,7 +23,7 @@ namespace Server
             _socketConnection = socketConnection;
         }
 
-        public void Read(Action<int> valueReadCallback)
+        public void Read(Action<int> valueReadCallback, Action terminationCallback = null)
         {
             var buffer = new byte[ChunkSize];
             int bytesRead;
@@ -29,6 +31,11 @@ namespace Server
             {
                 if (!TryConvertToInt32(buffer, out int value))
                 {
+                    if (IsTerminateSequence(buffer))
+                    {
+                        terminationCallback?.Invoke();
+                        break;
+                    }
                     break;
                 }
                 valueReadCallback?.Invoke(value);
@@ -76,6 +83,16 @@ namespace Server
                 value += ((b - 48) * place);
             }
             return true;
+        }
+
+        private bool IsTerminateSequence(byte[] buffer)
+        {
+            if (buffer[0] == 84 || buffer[0] == 116)
+            {
+                return Encoding.ASCII.GetString(buffer)
+                    .Equals(_terminateSequence, StringComparison.OrdinalIgnoreCase);
+            }
+            return false;
         }
     }
 }

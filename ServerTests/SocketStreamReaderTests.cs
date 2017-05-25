@@ -51,16 +51,19 @@ namespace ServerTests
             var socket = A.Fake<ISocketConnectionProxy>();
             var reader = new SocketStreamReader(socket);
             var values = new List<int>();
+            var terminated = false;
 
+            StubReceive(socket, 0, SocketStreamReader.ChunkSize, GetBytes("123456789"));
             StubReceive(socket, 0, SocketStreamReader.ChunkSize, GetBytes("terminate"));
-            StubReceive(socket, 0, SocketStreamReader.ChunkSize, GetBytes("023456789"));
+            StubReceive(socket, 0, SocketStreamReader.ChunkSize, GetBytes("123456789"));
             StubReceive(socket, 0, SocketStreamReader.ChunkSize, GetBytes("123456789"));
 
-            reader.Read(value => values.Add(value));
-
+            reader.Read(value => values.Add(value), () => terminated = true);
+            
             Assert.Equal(
-                new int[] { 123456789, 23456789 },
+                new int[] { 123456789, 123456789 },
                 values.ToArray());
+            Assert.True(terminated);
         }
 
         [Theory]
@@ -88,6 +91,26 @@ namespace ServerTests
 
         [Fact]
         public void TestReadInvalidSubsequentLine()
+        {
+            var socket = A.Fake<ISocketConnectionProxy>();
+            var reader = new SocketStreamReader(socket);
+            var values = new List<int>();
+
+            StubReceive(socket, 0, SocketStreamReader.ChunkSize, GetBytes("123456789"));
+            StubReceive(socket, 0, SocketStreamReader.ChunkSize, GetBytes("12345678", false));
+            StubReceive(socket, 0, SocketStreamReader.ChunkSize, GetBytes("003456789"));
+            StubReceive(socket, 0, SocketStreamReader.ChunkSize, GetBytes("023456789"));
+            StubReceive(socket, 0, SocketStreamReader.ChunkSize, GetBytes("123456789"));
+
+            reader.Read(value => values.Add(value));
+
+            Assert.Equal(
+                new int[] { 123456789, 23456789, 3456789 },
+                values.ToArray());
+        }
+
+        [Fact]
+        public void TestTerminations()
         {
             var socket = A.Fake<ISocketConnectionProxy>();
             var reader = new SocketStreamReader(socket);
