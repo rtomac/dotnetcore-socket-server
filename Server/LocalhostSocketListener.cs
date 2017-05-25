@@ -1,4 +1,5 @@
-﻿using System;
+﻿using log4net;
+using System;
 using System.Net;
 using System.Net.Sockets;
 
@@ -8,6 +9,7 @@ namespace Server
     {
         private readonly int _port;
         private readonly int _maxConnections;
+        private static ILog _log = LogManager.GetLogger(typeof(LocalhostSocketListener));
 
         public LocalhostSocketListener(int port, int maxConnections)
         {
@@ -23,10 +25,10 @@ namespace Server
 
             while (true)
             {
-                Console.WriteLine($"Waiting for a socket connection on port {_port}...");
+                _log.Info($"Waiting for a socket connection on port {_port}...");
                 var socketConnection = socket.Accept();
 
-                Console.WriteLine($"Socket connection created on port {_port}");
+                _log.Info($"Socket connection created on port {_port}.");
                 newSocketConnectionCallback(socketConnection);
             }
         }
