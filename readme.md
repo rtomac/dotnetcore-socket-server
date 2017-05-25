@@ -39,7 +39,7 @@ Fire it up, and it will start listening for connections (by default) on port 400
 run-server.bat
 ```
 
-run-server.bat simply calls `dotnet run` from the server app/project dir.
+`run-server.bat` simply calls `dotnet run` from the server app/project dir.
 
 For command-line usage of the server app, run:
 
@@ -56,7 +56,7 @@ When started, and it will connect to the server (by default) on port 4000 and st
 run-client.bat
 ```
 
-run-client.bat simply calls `dotnet run` from the client app/project dir.
+`run-client.bat` simply calls `dotnet run` from the client app/project dir.
 
 Again, for command-line usage, run:
 
@@ -64,3 +64,15 @@ Again, for command-line usage, run:
 cd Client
 dotnet run -- -?
 ```
+
+The code
+=========
+Here is a brief overview of the code/class design (in the server app):
+- `Program`: Entry point for the server app. Handles command-line parsing, etc., but delegates the real work to the `Application` class.
+- `Application`: Class that orchestrates and controls the lifetime of the different components in the application, including the socket listener, the log file writer, and the status reporter.
+- `LocalhostSocketListener`: Binds to localhost:4000 (or specified port), listens for incoming connections on a background thread, and dispatches new threads to handle each of them.
+- `SocketStreamReader`: Reads data from a network stream over a socket connection, parses and processes it, and hands the good stuff off to other components for further processing (i.e. writing to log file).
+- `QueueingLogWriter`: Writes (de-duped) values transmitted to the server into a log file. Does this by managing an in-memory queue of values to be written, and processing that queue on a background worker thread, to isolate the file I/O and prevent it from blocking the other threads that are processing data from their network connections.
+- `StatusReporter`: Keeps track of aggregate statistics and (on a background thread) periodically writes a status report to stdout.
+
+The source code has a bit more documentation on how all of these classes are doing their job. Check it out.
