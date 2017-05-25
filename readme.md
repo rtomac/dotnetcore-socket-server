@@ -14,9 +14,8 @@ choco install dotnetcore-sdk
 
 #### Clone repo
 
-
 ```
-git clone <me>
+git clone https://github.com/rtomac/dotnetcore-socket-server.git
 ```
 
 #### Build
