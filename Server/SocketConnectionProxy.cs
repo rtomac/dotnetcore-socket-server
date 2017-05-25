@@ -1,8 +1,11 @@
-﻿using System;
-using System.Net.Sockets;
+﻿using System.Net.Sockets;
 
 namespace Server
 {
+    /// <summary>
+    /// A implementation of <see cref="ISocketConnectionProxy"/>
+    /// which provides access to an underlying <see cref="Socket"/>.
+    /// </summary>
     public class SocketConnectionProxy : ISocketConnectionProxy
     {
         private readonly Socket _socket;

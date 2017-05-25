@@ -7,10 +7,20 @@ using System.Text;
 
 namespace Client
 {
+    /// <summary>
+    /// Entry point for client console app.
+    /// </summary>
+    /// <remarks>
+    /// Creates a socket connection on the specified port and starts blasting the
+    /// specified number of values to the server.
+    /// 
+    /// The <c>_exitSignal</c> reset event is used to gracefully stop sending data
+    /// and close the socket connection if/when the user types CTRL-C.
+    /// </remarks>
     class Program
     {
         private static Socket _socket;
-        private static bool _stopSignal;
+        private static bool _exitSignal;
 
         static int Main(string[] args)
         {
@@ -47,7 +57,7 @@ namespace Client
 
             Console.CancelKeyPress += delegate
             {
-                _stopSignal = true;
+                _exitSignal = true;
                 DisconnectFromServer();
             };
 
@@ -83,7 +93,7 @@ namespace Client
             var bytes = new byte[4];
             uint value = 0;
 
-            while (!_stopSignal && count++ < numberToSend)
+            while (!_exitSignal && count++ < numberToSend)
             {
                 rng.GetBytes(bytes);
                 value = BitConverter.ToUInt32(bytes, 0);
@@ -103,7 +113,7 @@ namespace Client
                 }
             }
 
-            if (!_stopSignal && terminate)
+            if (!_exitSignal && terminate)
             {
                 _socket.Send(Encoding.ASCII.GetBytes("terminate" + Environment.NewLine));
                 Console.WriteLine($"Terminate command sent.");

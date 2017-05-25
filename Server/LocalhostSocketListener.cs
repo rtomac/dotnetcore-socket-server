@@ -7,6 +7,26 @@ using System.Threading;
 
 namespace Server
 {
+    /// <summary>
+    /// Opens a server socket on the local host bound to the specified port which
+    /// listens for incoming connections and dispatches new threads to handle each
+    /// of those connections.
+    /// </summary>
+    /// <remarks>
+    /// Manages the lifetime of threads created to handle connections. Keeps
+    /// track of the number of connections, and refuses connections past the 
+    /// specified threshold.
+    /// 
+    /// The server socket thread stays alive by virtue of the <c>Accept</c> method.
+    /// 
+    /// Each connection thread will stay alive as long as the callback in
+    /// the <see cref="Application"/> class is processing it. Once that completes,
+    /// it will disconnect the client and let the thread die.
+    /// 
+    /// The only shared resource in this class that needs to be synchronized
+    /// is the list of sockets that we use to keep track of the open
+    /// connections.
+    /// </remarks>
     public class LocalhostSocketListener
     {
         private readonly int _port;
@@ -27,6 +47,8 @@ namespace Server
 
         public void Start(Action<Socket> newSocketConnectionCallback)
         {
+            // Start thread for server socket that will listen for
+            // new connections.
             var thread = new Thread(new ThreadStart(() =>
             {
                 BindAndListen(newSocketConnectionCallback);
@@ -38,11 +60,15 @@ namespace Server
         {
             lock (_connectionsLock)
             {
+                // Close socket connections (thereby release threads)
+                // for each open connection.
                 _connections.ForEach(ShutdownSocket);
             }
 
             if (_socket != null)
             {
+                // Close server socket and stop listening on port.
+                // Will release the thread on which that's running.
                 _socket.Dispose();
                 _socket = null;
             }
@@ -66,6 +92,7 @@ namespace Server
                 Socket connection;
                 try
                 {
+                    // Blocking method
                     connection = _socket.Accept();
                 }
                 catch (SocketException ex)
@@ -76,6 +103,7 @@ namespace Server
 
                 if (ShouldRefuseConnection())
                 {
+                    // We already have the max number of connections.
                     ShutdownSocket(connection);
                     _log.Info("Socket connection refused.");
                     continue;
@@ -87,8 +115,18 @@ namespace Server
             }
         }
 
+        private bool ShouldRefuseConnection()
+        {
+            lock (_connectionsLock)
+            {
+                return _connections.Count >= _maxConnections;
+            }
+        }
+
         private void DispatchThreadForNewConnection(Socket connection, Action<Socket> newSocketConnectionCallback)
         {
+            // Create thread to manage new socket connection.
+            // Will stay alive as long as callback is executing.
             var thread = new Thread(new ThreadStart(() =>
             {
                 ExecuteCallback(connection, newSocketConnectionCallback);
@@ -120,14 +158,6 @@ namespace Server
             {
                 ShutdownSocket(connection);
                 _log.Info("Socket connection closed.");
-            }
-        }
-
-        private bool ShouldRefuseConnection()
-        {
-            lock (_connectionsLock)
-            {
-                return _connections.Count >= _maxConnections;
             }
         }
 

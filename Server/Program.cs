@@ -12,6 +12,17 @@ using System.Threading;
 
 namespace Server
 {
+    /// <summary>
+    /// Entry point for server console app.
+    /// </summary>
+    /// <remarks>
+    /// Responsible for setting up the log4net logger (use for writing to stdout)
+    /// and parsing command-line options. The real work is delegated to the
+    /// <c>Application</c> class.
+    /// 
+    /// The <c>_exitSignal</c> reset event is used to gracefully shutdown the server
+    /// if/when the user types CTRL-C.
+    /// </remarks>
     class Program
     {
         private static Application _app;
@@ -60,11 +71,12 @@ namespace Server
             ((Hierarchy)repository).Root.Level = level;
             BasicConfigurator.Configure(repository, appender);
         }
-
+        
         private static void Run(int port, int maxConnections, int statusInterval, string logFile)
         {
             Console.WriteLine("Note: Press <CTRL-C> to stop server.");
 
+            // Create and run application, which does all the real work.
             _app = new Application(
                 port, maxConnections, statusInterval,
                 Path.Combine(Directory.GetCurrentDirectory(), logFile));
@@ -72,6 +84,7 @@ namespace Server
 
             Console.CancelKeyPress += delegate { StopServer(); };
 
+            // Block on exit signal to keep process running until exit event encountered
             _exitSignal.Wait();
         }
 
