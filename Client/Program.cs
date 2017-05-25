@@ -12,7 +12,7 @@ namespace Client
         {
             var stopSignal = false;
             var rng = RandomNumberGenerator.Create();
-            int max = args.Length > 0 ? int.Parse(args[0]) : 20000;
+            int max = args.Length > 0 ? int.Parse(args[0]) : 1000000;
             int count = 0;
 
             var socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
@@ -29,14 +29,22 @@ namespace Client
             };
 
             var bytes = new byte[4];
-            uint value;
+            uint value = 0;
             while (!stopSignal && count++ < max)
             {
                 rng.GetBytes(bytes);
                 value = BitConverter.ToUInt32(bytes, 0);
-                socket.Send(Encoding.ASCII.GetBytes(ToPaddedString(value) + Environment.NewLine));
-                
-                if (count % 10000 == 0)
+                try
+                {
+                    socket.Send(Encoding.ASCII.GetBytes(ToPaddedString(value) + Environment.NewLine));
+                }
+                catch (SocketException ex)
+                {
+                    Console.WriteLine("Socket connection forcibly closed.");
+                    break;
+                }
+
+                if (count % 100000 == 0)
                 {
                     Console.WriteLine($"{count} values sent.");
                 }
