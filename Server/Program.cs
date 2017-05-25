@@ -7,16 +7,12 @@ using log4net.Repository.Hierarchy;
 using System;
 using System.IO;
 using System.Reflection;
-using System.Text;
 
 namespace Server
 {
     class Program
     {
-        private static StatusReporter _reporter;
-        private static FileStream _file;
-        private static QueueingLogWriter _logWriter;
-        private static LocalhostSocketListener _listener;
+        private static Application _app;
 
         static void Main(string[] args)
         {
@@ -24,37 +20,15 @@ namespace Server
 
             Console.WriteLine("Note: Press 'q' to stop server.");
 
-            var logPath = Path.Combine(Directory.GetCurrentDirectory(), "numbers.log");
-            _file = new FileStream(logPath, FileMode.Create);
-            _logWriter = new QueueingLogWriter(new StreamWriter(_file, Encoding.ASCII));
-            _logWriter.Start();
-
-            _reporter = new StatusReporter();
-            _reporter.Start(10);
-
-            _listener = new LocalhostSocketListener(4000, 5);
-            _listener.Start(socket =>
-            {
-                var reader = new SocketStreamReader(socket);
-                reader.Read(ProcessValue);
-            });
+            _app = new Application(
+                4000, 5, 10,
+                Path.Combine(Directory.GetCurrentDirectory(), "numbers.log"));
+            _app.Run();
 
             Console.CancelKeyPress += delegate { StopServer(); };
 
             while (Console.ReadKey(true).Key != ConsoleKey.Q) { }
             StopServer();
-        }
-
-        private static void ProcessValue(int value)
-        {
-            if (_logWriter.WriteUnique(value))
-            {
-                _reporter.RecordUnique();
-            }
-            else
-            {
-                _reporter.RecordDuplicate();
-            }
         }
 
         private static void ConfigureLogging(Level level)
@@ -73,14 +47,9 @@ namespace Server
             Console.WriteLine("Stopping server...");
             try
             {
-                _logWriter.Stop();
-                _file.Dispose();
-                _listener.Stop();
-                _reporter.Stop();
+                _app.Dispose();
             }
-            catch
-            {
-            }
+            catch { }
         }
     }
 }

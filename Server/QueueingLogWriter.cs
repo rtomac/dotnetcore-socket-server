@@ -22,6 +22,8 @@ namespace Server
             _lock = new object();
             _stopSignal = new ManualResetEventSlim();
             _itemsInQueue = new ManualResetEventSlim();
+
+            StartWatchingQueue();
         }
 
         public bool WriteUnique(int value)
@@ -38,7 +40,22 @@ namespace Server
             }
         }
 
-        public void Start()
+        public void Dispose()
+        {
+            StopWatchingQueue();
+        }
+
+        private void WriteToFile(int value)
+        {
+            var str = value.ToString();
+            if (str.Length < 9)
+            {
+                str = String.Concat(new String('0', 9 - str.Length), str);
+            }
+            _writer.WriteLine(str);
+        }
+
+        private void StartWatchingQueue()
         {
             _stopSignal.Reset();
             var thread = new Thread(new ThreadStart(() =>
@@ -61,24 +78,9 @@ namespace Server
             thread.Start();
         }
 
-        public void Stop()
+        private void StopWatchingQueue()
         {
             _stopSignal.Set();
-        }
-
-        public void Dispose()
-        {
-            Stop();
-        }
-
-        private void WriteToFile(int value)
-        {
-            var str = value.ToString();
-            if (str.Length < 9)
-            {
-                str = String.Concat(new String('0', 9 - str.Length), str);
-            }
-            _writer.WriteLine(str);
         }
     }
 }

@@ -5,7 +5,7 @@ using System.Threading;
 
 namespace Server
 {
-    public class StatusReporter : IDisposable
+    public class StatusReporter
     {
         public int TotalUnique { get; private set; }
         public int TotalDuplicates { get; private set; }
@@ -102,11 +102,6 @@ namespace Server
         public void Stop()
         {
             _stopSignal.Set();
-        }
-
-        public void Dispose()
-        {
-            Stop();
         }
     }
 }
