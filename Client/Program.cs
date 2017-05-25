@@ -91,7 +91,7 @@ namespace Client
                 {
                     _socket.Send(Encoding.ASCII.GetBytes(ToPaddedString(value) + Environment.NewLine));
                 }
-                catch (SocketException ex)
+                catch (SocketException)
                 {
                     Console.WriteLine("Socket connection forcibly closed.");
                     break;
