@@ -4,6 +4,7 @@ using log4net.Config;
 using log4net.Core;
 using log4net.Layout;
 using log4net.Repository.Hierarchy;
+using Microsoft.Extensions.CommandLineUtils;
 using System;
 using System.IO;
 using System.Reflection;
@@ -18,17 +19,34 @@ namespace Server
         {
             ConfigureLogging(Level.Info);
 
-            Console.WriteLine("Note: Press 'q' to stop server.");
+            var port = 4000;
+            var maxConnections = 5;
+            var statusInterval = 10;
+            var logFile = "numbers.log";
 
-            _app = new Application(
-                4000, 5, 10,
-                Path.Combine(Directory.GetCurrentDirectory(), "numbers.log"));
-            _app.Run(TerminateCommandReceived);
+            var cmd = new CommandLineApplication()
+            {
+                FullName = "A socket server which will log 9-digit numbers that are sent to it.",
+                Name = "dotnet run --"
+            };
+            var portOption = cmd.Option("-p|--port <port>", $"The port on which the server should run. Default: {port}", CommandOptionType.SingleValue);
+            var maxConnectionsOption = cmd.Option("-m|--max <max>", $"The maximum number of socket connections the server should allow. Default: {maxConnections}", CommandOptionType.SingleValue);
+            var statusIntervalOption = cmd.Option("-s|--status <interval>", $"The number of seconds between each status report. Default: {statusInterval}", CommandOptionType.SingleValue);
+            var logFileOption = cmd.Option("-l|--log <filePath>", $"The path to which value should be logged. Default: {logFile} in the working dir.", CommandOptionType.SingleValue);
+            var helpOption = cmd.HelpOption("-?|-h|--help");
+            cmd.OnExecute(() =>
+            {
+                if (helpOption.HasValue()) return 0;
+                if (portOption.HasValue()) port = int.Parse(portOption.Value());
+                if (maxConnectionsOption.HasValue()) maxConnections = int.Parse(maxConnectionsOption.Value());
+                if (statusIntervalOption.HasValue()) statusInterval = int.Parse(statusIntervalOption.Value());
+                if (logFileOption.HasValue()) logFile = logFileOption.Value();
 
-            Console.CancelKeyPress += delegate { StopServer(); };
+                Run(port, maxConnections, statusInterval, logFile);
 
-            while (Console.ReadKey(true).Key != ConsoleKey.Q) { }
-            StopServer();
+                return 0;
+            });
+            cmd.Execute(args);
         }
 
         private static void ConfigureLogging(Level level)
@@ -42,11 +60,19 @@ namespace Server
             BasicConfigurator.Configure(repository, appender);
         }
 
-        private static void TerminateCommandReceived()
+        private static void Run(int port, int maxConnections, int statusInterval, string logFile)
         {
-            Console.WriteLine("Terminate command received.");
+            Console.WriteLine("Note: Press 'q' to stop server.");
+
+            _app = new Application(
+                port, maxConnections, statusInterval,
+                Path.Combine(Directory.GetCurrentDirectory(), logFile));
+            _app.Run(TerminateCommandReceived);
+
+            Console.CancelKeyPress += delegate { StopServer(); };
+
+            while (Console.ReadKey(true).Key != ConsoleKey.Q) { }
             StopServer();
-            Environment.Exit(0);
         }
 
         private static void StopServer()
@@ -57,6 +83,13 @@ namespace Server
                 _app.Dispose();
             }
             catch { }
+        }
+
+        private static void TerminateCommandReceived()
+        {
+            Console.WriteLine("Terminate command received.");
+            StopServer();
+            Environment.Exit(0);
         }
     }
 }

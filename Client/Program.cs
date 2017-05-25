@@ -14,25 +14,36 @@ namespace Client
 
         static void Main(string[] args)
         {
+            var port = 4000;
             var numberToSend = 1000000;
             var terminate = false;
 
-            var cmd = new CommandLineApplication(throwOnUnexpectedArg: false);
-            var numberOption = cmd.Option("-n|--number <number>", "The number of values to send to the server. Default is 1M.", CommandOptionType.SingleValue);
-            var terminateOption = cmd.Option("-t|--terminate", "Send a terminate command after values are sent to the server.", CommandOptionType.NoValue);
-            cmd.HelpOption("-?|-h|--help");
+            var cmd = new CommandLineApplication()
+            {
+                FullName = "A console application that will send data to the number server.",
+                Name = "dotnet run --"
+            };
+            var portOption = cmd.Option("-p|--port <port>", $"The port on which the server is running. Default: {port}", CommandOptionType.SingleValue);
+            var numberOption = cmd.Option("-n|--number <number>", "The number of values to send to the server. Default: 1M", CommandOptionType.SingleValue);
+            var terminateOption = cmd.Option("-t|--terminate", "Send a terminate command after all values are sent to the server.", CommandOptionType.NoValue);
+            var helpOption = cmd.HelpOption("-?|-h|--help");
             cmd.OnExecute(() =>
             {
-                if (numberOption.HasValue() && int.TryParse(numberOption.Value(), out int numberValue))
-                {
-                    numberToSend = numberValue;
-                }
+                if (helpOption.HasValue()) return 0;
+                if (portOption.HasValue()) port = int.Parse(portOption.Value());
+                if (numberOption.HasValue()) numberToSend = int.Parse(numberOption.Value());
                 terminate = terminateOption.HasValue();
+
+                Run(port, numberToSend, terminate);
+
                 return 0;
             });
             cmd.Execute(args);
+        }
 
-            ConnectToServer(4000);
+        private static void Run(int port, int numberToSend, bool terminate)
+        {
+            ConnectToServer(port);
 
             Console.CancelKeyPress += delegate
             {
@@ -50,12 +61,6 @@ namespace Client
             _socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             _socket.Connect(new IPEndPoint(IPAddress.Loopback, port));
             Console.WriteLine("Connected.");
-        }
-
-        private static void DisconnectFromServer()
-        {
-            _socket.Shutdown(SocketShutdown.Both);
-            _socket.Dispose();
         }
 
         private static void SendData(int numberToSend, bool terminate)
@@ -90,6 +95,12 @@ namespace Client
                 _socket.Send(Encoding.ASCII.GetBytes("terminate" + Environment.NewLine));
                 Console.WriteLine($"Terminate command sent.");
             }
+        }
+
+        private static void DisconnectFromServer()
+        {
+            _socket.Shutdown(SocketShutdown.Both);
+            _socket.Dispose();
         }
 
         private static string ToPaddedString(uint value)
