@@ -4,6 +4,13 @@ This is an exercise to experiment with raw TCP socket comms, using .NET Core, st
 
 In some areas of the implementation there are CLR constructs (async/await) and BCL classes that could make this simpler, but I'm striving to do all the thread management, parallelization, and synchronization of resources manually. Also just for fun.
 
+The project contains a server app and a client app, which behave as follows:
+- Server accepts input from up to five concurrent clients (port 4000 by default).
+- Server expects lines of input containing exactly nine decimal digits (zero-padded if necessary) and terminated with a server-native newline sequence.
+- Server writes any unique numbers it receives to a log file.
+- Server writes a status report to the console every 10s.
+- If client sends a line of input with a "terminate" command, server will close all connections and shut itself down.
+
 Building
 ========
 #### Get .NET Core SDK with .NET 1.1 runtime
